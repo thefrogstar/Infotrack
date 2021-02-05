@@ -24,7 +24,7 @@ export class Home extends Component {
             else if (element.id == "hitLimitbox") { json["hitLimit"] = parseInt(element.value) }
         })
 
-        const response = await fetch("https://localhost:44357/api/Search", {            
+        const response = await fetch("https://localhost:44357/api/Search", {
             method: "POST",
             headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
             body: JSON.stringify(json),
@@ -32,14 +32,23 @@ export class Home extends Component {
         })
             .catch(error => {
                 console.log(error)
-                this.setState({ isError: true, resultsAvailable: false, errorMessage: error });
             })
             .then(response => {
-                return response.json();
-            }).then(json => 
-                this.setState({ resultsAvailable: true, isError: false, results:json }));
-
-        
+                if (response.status == "200") {
+                    this.setState({
+                        resultsAvailable: true, isError: false
+                    });
+                        return response.json();
+                    }
+                else {
+                    this.setState({ resultsAvailable: false, isError: true, errorMessage: "An error occured while retrieving results, please contact support" });
+                    return Promise.reject();   
+                }
+            }).then(json =>
+                this.setState({results: json }))
+            .catch(error => {
+                console.log(error)
+            });
     }
 
     render() {

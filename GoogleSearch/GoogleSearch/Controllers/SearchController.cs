@@ -23,21 +23,32 @@ namespace GoogleSearch.Controllers
         [HttpPost]
         public async Task<IActionResult> Post(SearchCriteria search)
         {
-            string resultsPage;
-            using (WebClient webClient = new WebClient())
+            try
             {
-                webClient.QueryString.Add("num", search.hitLimit.ToString());
-                webClient.QueryString.Add("q", string.Join('+', search.keywordCSV.Split(' ')));
-                resultsPage = await webClient.DownloadStringTaskAsync(new Uri("https://www.google.co.uk/search"));
+                string resultsPage;
+                using (WebClient webClient = new WebClient())
+                {
+                    webClient.QueryString.Add("num", search.hitLimit.ToString());
+                    webClient.QueryString.Add("q", string.Join('+', search.keywordCSV.Split(' ')));
+                    resultsPage = await webClient.DownloadStringTaskAsync(new Uri("https://www.google.co.uk/search"));
+                }
+
+                (IEnumerable<Finding>, int) findings = new SearchResult(resultsPage, search.targetURL).GetFindings();
+
+                JObject jobj = new JObject();
+                jobj.Add(new JProperty("HitCount", findings.Item2));
+                jobj["HitList"] = JArray.Parse(JsonConvert.SerializeObject(findings.Item1));
+
+                return Ok(jobj.ToString());
             }
-
-            (IEnumerable<Finding>, int) findings = new SearchResult(resultsPage, search.targetURL).GetFindings();
-
-            JObject jobj = new JObject();
-            jobj.Add(new JProperty("HitCount", findings.Item2));
-            jobj["HitList"] = JArray.Parse(JsonConvert.SerializeObject(findings.Item1));
-            
-            return Ok(jobj.ToString());
+            catch (WebException ex)
+            {
+                return new BadRequestObjectResult("Unable to communicate with Google");
+            }
+            catch (Exception ex)
+            {
+                return new BadRequestObjectResult("There was an error");
+            }
         }
     }
 }
